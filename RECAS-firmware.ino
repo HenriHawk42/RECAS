@@ -75,7 +75,7 @@ double reactionSpeed = 1.0;
 
 // User-readable indicators
 int safetyIndicator;
-char safetySuggestion[8];
+char* safetySuggestion[] = {};
 
 // Initalize Display
 const int rs = 8, en = 9, d4 = 10, d5 = 16, d6 = 14, d7 = 15;
@@ -95,7 +95,10 @@ void setup() {
   lcd.begin(16, 2);
   lcd.setCursor(0,0);
   lcd.leftToRight();
+  lcd.clear();
   lcd.print("Initializing....");
+  delay(1000);
+  distance = 1;
 }
 
 // GPS pin initialization
@@ -131,7 +134,7 @@ void loop() {
           index++;
           if (crc8(Framereceived, 3) == Framereceived[3]) {
             //Convert bytes to distance
-            distance = (Framereceived[1]<<8) + Framereceived[2];
+            //distance = (Framereceived[1]<<8) + Framereceived[2];
             Serial.print("Distance in mm : ");
             Serial.println(distance);
 
@@ -155,7 +158,7 @@ void loop() {
   // Sets cursor for bar readout
   lcd.leftToRight();
   lcd.setCursor(0, 1);
-
+  safetyIndicator = 7;
   switch (safetyIndicator) {
     case 0:
       lcd.print("                ");
@@ -231,14 +234,17 @@ void loop() {
   }
 
   // Print distance on display
+  distance = 10000;
+  //safetySuggestion[] = "A";
   lcd.leftToRight();
   lcd.setCursor(0, 0);
   lcd.print(round(distance / 1000));
   lcd.print("M");
 
   // Print safety suggestion on display
-  lcd.rightToLeft();
-  lcd.setCursor(15, 0);
+  lcd.leftToRight();
+  lcd.setCursor(6, 0);
   lcd.print(safetySuggestion[8]);
-
+  delay(1000);
+  lcd.clear();
 }
