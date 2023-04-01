@@ -1,7 +1,3 @@
-#include "TinyGPS++.h"
-#include <LiquidCrystal.h>
-TinyGPSPlus gps;
-
 /*
  * This code allows you to check if the UART communication between the TeraRanger Evo and the Arduino Mega board works.
  * You just need to upload the code in the board with the TeraRanger connected on pins TX1, RX1, GND and 5V. Make sure to connect the signal RX of TeraRanger to TX1 of your Arduino and vice versa TX to RX1).
@@ -9,7 +5,6 @@ TinyGPSPlus gps;
  * To check if the communication is working the best is to open the serial monitor and check if the distance is printed like this: "Distance in mm: XXX";
  */
 
-// Terabee code that does something idk what
 // Create a Cyclic Redundancy Checks table used in the "crc8" function
 static const uint8_t crc_table[] = {
   0x00, 0x07, 0x0e, 0x09, 0x1c, 0x1b, 0x12, 0x15, 0x38, 0x3f, 0x36, 0x31,
@@ -56,31 +51,12 @@ uint8_t crc8(uint8_t *p, uint8_t len) {
 const byte PRINTOUT_BINARY[4] = {0x00,0x11,0x02,0x4C};
 const byte PRINTOUT_TEXT[4]   = {0x00,0x11,0x01,0x45};
 
-// Initialize variables for distance sensor
+// Initialize variables
 const int BUFFER_LENGTH = 10;
 uint8_t Framereceived[BUFFER_LENGTH];// The variable "Framereceived[]" will contain the frame sent by the TeraRanger
 uint8_t index;// The variable "index" will contain the number of actual bytes in the frame to treat in the main loop
 uint16_t distance;// The variable "distancex" will contain the distance value in millimeter
 
-// Variables for calculations
-double velocity;
-double safeDistance;
-double distanceDifference;
-
-// User-modifiable variables
-double reactionSpeed = 1.0;
-
-// Maps values of distance to integers
-// int range = map(distance);
-
-// User-readable indicators
-int safetyIndicator;
-char* safetySuggestion[] = {};
-
-// Initalize Display
-const int rs = 8, en = 9, d4 = 10, d5 = 16, d6 = 14, d7 = 15;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-// lcd(8, 9, 10, 16, 14, 15)
 
 void setup() {
   pinMode(13, OUTPUT);// Initialize digital pin 13 as an output (ERASABLE if the communication works)
@@ -90,29 +66,10 @@ void setup() {
   Serial1.write(PRINTOUT_BINARY, 4);// Set the TeraRanger in Binary mode
   //Serial1.write(PRINTOUT_TEXT, 4);// Set the TeraRanger in Binary mode
   index = 0;
-
-  // LCD Setup
-  lcd.begin(16, 2);
-  lcd.setCursor(0,0);
-  lcd.leftToRight();
-  lcd.clear();
-  lcd.print("Initializing....");
-  delay(1000);
-  distance = 1;
 }
-
-// GPS pin initialization
-//HardwareSerial ss(3, 2); //rx d3 tx d2
 
 // The main loop starts here
 void loop() {
-
-  // GPS stuff
-  //gps.encode(ss.read);
-
-  // Clears LCD
-  //lcd.clear();
-
   if (Serial1.available() > 0) {
     // Send data only when you receive data
     uint8_t inChar = Serial1.read();
@@ -134,7 +91,7 @@ void loop() {
           index++;
           if (crc8(Framereceived, 3) == Framereceived[3]) {
             //Convert bytes to distance
-            //distance = (Framereceived[1]<<8) + Framereceived[2];
+            distance = (Framereceived[1]<<8) + Framereceived[2];
             Serial.print("Distance in mm : ");
             Serial.println(distance);
 
@@ -145,106 +102,4 @@ void loop() {
       }
     }
   }
-  
-  // Calculates safe following distance
-  safeDistance = gps.speed.mps() * reactionSpeed;
-
-  // Logic that compares the measured distance to the safe distance
-  distanceDifference = (distance / 1000) - safeDistance;
-
-  // Logic that turns the distance difference into an integer that can be read by the safety indicator
-  safetyIndicator = round(distanceDifference / 4);
-
-  // Sets cursor for bar readout
-  lcd.leftToRight();
-  lcd.setCursor(0, 1);
-  safetyIndicator = 7;
-  switch (safetyIndicator) {
-    case 0:
-      lcd.print("                ");
-      safetySuggestion[8] = "Good";
-      break;
-    case 1:
-      lcd.print("|               ");
-      safetySuggestion[8] = "Good";
-      break;
-    case 2:
-      lcd.print("||              ");
-      safetySuggestion[8] = "Coast";
-      break;
-    case 3:
-      lcd.print("|||             ");
-      safetySuggestion[8] = "Coast";
-      break;
-    case 4:
-      lcd.print("||||            ");
-      safetySuggestion[8] = "Coast";
-      break;
-    case 5:
-      lcd.print("|||||           ");
-      safetySuggestion[8] = "Slow";
-      break;
-    case 6:
-      lcd.print("||||||          ");
-      safetySuggestion[8] = "Slow";
-      break;
-    case 7:
-      lcd.print("|||||||         ");
-      safetySuggestion[8] = "Slow";
-      break;
-    case 8:
-      lcd.print("||||||||        ");
-      safetySuggestion[8] = "Brake";
-      break;
-    case 9:
-      lcd.print("|||||||||       ");
-      safetySuggestion[8] = "Brake";
-      break;
-    case 10:
-      lcd.print("||||||||||      ");
-      safetySuggestion[8] = "Brake";
-      break;
-    case 11:
-      lcd.print("|||||||||||     ");
-      safetySuggestion[8] = "Brake";
-      break;
-    case 12:
-      lcd.print("||||||||||||    ");
-      safetySuggestion[8] = "BRAKE";
-      break;
-    case 13:
-      lcd.print("|||||||||||||   ");
-      safetySuggestion[8] = "BRAKE";
-      break;
-    case 14:
-      lcd.print("||||||||||||||  ");
-      safetySuggestion[8] = "BRAKE";
-      break;
-    case 15:
-      lcd.print("||||||||||||||| ");
-      safetySuggestion[8] = "STOP";
-      break;
-    case 16:
-      lcd.print("||||||||||||||||");
-      safetySuggestion[8] = "STOP";
-      break;
-    default:
-      lcd.print("lmao code better");
-    break;
-  }
-
-  // Print distance on display
-  distance = 10000;
-  //safetySuggestion[] = "A";
-  lcd.leftToRight();
-  lcd.setCursor(0, 0);
-  lcd.print(round(distance / 1000));
-  lcd.print("M");
-
-  // Print safety suggestion on display
-  lcd.leftToRight();
-  lcd.setCursor(6, 0);
-  lcd.print(safetySuggestion[8]);
-  delay(1000);
-  lcd.clear();
 }
