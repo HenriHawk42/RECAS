@@ -1,10 +1,3 @@
-/*
- * This code allows you to check if the UART communication between the TeraRanger Evo and the Arduino Mega board works.
- * You just need to upload the code in the board with the TeraRanger connected on pins TX1, RX1, GND and 5V. Make sure to connect the signal RX of TeraRanger to TX1 of your Arduino and vice versa TX to RX1).
- * If the supply of the TeraRanger is stopped or interrupted while the code is running, just press the reset button on the board.
- * To check if the communication is working the best is to open the serial monitor and check if the distance is printed like this: "Distance in mm: XXX";
- */
-
 // Create a Cyclic Redundancy Checks table used in the "crc8" function
 static const uint8_t crc_table[] = {
   0x00, 0x07, 0x0e, 0x09, 0x1c, 0x1b, 0x12, 0x15, 0x38, 0x3f, 0x36, 0x31,
@@ -51,55 +44,200 @@ uint8_t crc8(uint8_t *p, uint8_t len) {
 const byte PRINTOUT_BINARY[4] = {0x00,0x11,0x02,0x4C};
 const byte PRINTOUT_TEXT[4]   = {0x00,0x11,0x01,0x45};
 
+  // ======================================================================================================================================== THE ABOVE CODE BELONGS TO THE LIDAR SENSOR
+
+#include <TinyGPS++.h>
+#include <SoftwareSerial.h>
+#include <LiquidCrystal.h>
+
+const int RXPin = 9, TXPin = 8;
+const uint32_t GPSBaud = 9600; //Default baud of NEO-6M is 9600
+
+
+TinyGPSPlus gps; // the TinyGPS++ object
+SoftwareSerial gpsSerial(RXPin, TXPin); // the serial interface to the GPS device
+
+  // ======================================================================================================================================== THE ABOVE CODE BELONGS TO THE GPS MODULE
+
 // Initialize variables
 const int BUFFER_LENGTH = 10;
 uint8_t Framereceived[BUFFER_LENGTH];// The variable "Framereceived[]" will contain the frame sent by the TeraRanger
 uint8_t index;// The variable "index" will contain the number of actual bytes in the frame to treat in the main loop
-uint16_t distance;// The variable "distancex" will contain the distance value in millimeter
+uint16_t distance = 0;// The variable "distancex" will contain the distance value in millimeter
 
+// Variables for calculations
+double velocity = 0;
+double safeDistance = 10;
+double distanceDifference = 0;
+double gpsMps = 0;
+uint16_t currentDistance = 0;
+
+// User-modifiable variables
+double reactionSpeed = 1.0;
+
+// Maps values of distance to integers
+// int range = map(distance);
+
+// User-readable indicators
+int safetyIndicator;
+const char* safetySuggestion = "NONE";
+
+// Initalize Display
+const int rs = 6, en = 7, d4 = 10, d5 = 16, d6 = 14, d7 = 15;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+// lcd(8, 9, 10, 16, 14, 15)
+
+  // ======================================================================================================================================== THE ABOVE CODE BELONGS TO HENRI
 
 void setup() {
   pinMode(13, OUTPUT);// Initialize digital pin 13 as an output (ERASABLE if the communication works)
-  Serial.begin(115200);// Open serial port 0 (which corresponds to USB port and pins TX0 and RX0), set data rate to 115200 bps
-  Serial1.begin(115200);// Open serial port 1 (which corresponds to pins TX1 and RX1), set data rate to 115200 bps
+  Serial.begin(115200);
+  Serial1.begin(115200);// Open serial port 0 (which corresponds to USB port and pins TX0 and RX0), set data rate to 115200 bps
 
   Serial1.write(PRINTOUT_BINARY, 4);// Set the TeraRanger in Binary mode
   //Serial1.write(PRINTOUT_TEXT, 4);// Set the TeraRanger in Binary mode
   index = 0;
+
+  // ======================================================================================================================================== THE ABOVE CODE BELONGS TO THE LIDAR SENSOR
+
+  gpsSerial.begin(GPSBaud);
+  lcd.setCursor(0, 0);
+  lcd.begin(16, 2);
+  // ======================================================================================================================================== THE ABOVE CODE BELONGS TO THE GPS MODULE
 }
+
 
 // The main loop starts here
 void loop() {
   if (Serial1.available() > 0) {
     // Send data only when you receive data
     uint8_t inChar = Serial1.read();
-    if ((inChar == 'T') && (index == 0)) {
-      //Looking for frame start 'T' (start of the frame)
+    
+    if (inChar == 'T') {
+      index = 0;
       Framereceived[index] = inChar;
       index++;
-    }
-    else {
-      if (Framereceived[0] == 'T') {
-        if ((index < 3) || ((index > 3) && (index < 9))) {
-          //Gathering frame data
-          Framereceived[index] = inChar;
-          index++;
-        }
-        //Check if the frame in single-range
-        else if (index == 3){
-          Framereceived[index] = inChar;
-          index++;
-          if (crc8(Framereceived, 3) == Framereceived[3]) {
-            //Convert bytes to distance
-            distance = (Framereceived[1]<<8) + Framereceived[2];
-            Serial.print("Distance in mm : ");
-            Serial.println(distance);
-
-            index = 0;
-            Framereceived[0] = 0;
-          }
-        }
+      Framereceived[index] = Serial1.read();
+      index++;
+      Framereceived[index] = Serial1.read();
+      index++;
+      Framereceived[index] = Serial1.read();
+      index++;
+      if (crc8(Framereceived, 3) == Framereceived[3]) {
+        //Convert bytes to distance
+        currentDistance = (Framereceived[1]<<8) + Framereceived[2];
       }
     }
   }
+
+  // ======================================================================================================================================== THE ABOVE CODE BELONGS TO THE LIDAR SENSOR
+  if (gpsSerial.available() > 0) {
+    if (gps.encode(gpsSerial.read())){
+      if (gps.speed.isUpdated()){
+        gpsMps = gps.speed.mps();
+      }
+    }
+  }
+
+  // ======================================================================================================================================== THE ABOVE CODE BELONGS TO THE GPS MODULE
+
+  // Calculates safe following distance
+  safeDistance = gpsMps * reactionSpeed;
+
+  // Logic that compares the measured distance to the safe distance
+  distanceDifference = (distance / 1000) - safeDistance;
+
+  // Logic that turns the distance difference into an integer that can be read by the safety indicator
+  safetyIndicator = round(distanceDifference / 4);
+
+  // Sets cursor for bar readout
+  lcd.leftToRight();
+  lcd.setCursor(0, 1);
+  switch (safetyIndicator) {
+    case 0:
+      lcd.print("                ");
+      safetySuggestion = "Good";
+      break;
+    case 1:
+      lcd.print("|               ");
+      safetySuggestion = "Good";
+      break;
+    case 2:
+      lcd.print("||              ");
+      safetySuggestion = "Coast";
+      break;
+    case 3:
+      lcd.print("|||             ");
+      safetySuggestion = "Coast";
+      break;
+    case 4:
+      lcd.print("||||            ");
+      safetySuggestion = "Coast";
+      break;
+    case 5:
+      lcd.print("|||||           ");
+      safetySuggestion = "Slow";
+      break;
+    case 6:
+      lcd.print("||||||          ");
+      safetySuggestion = "Slow";
+      break;
+    case 7:
+      lcd.print("|||||||         ");
+      safetySuggestion = "Slow";
+      break;
+    case 8:
+      lcd.print("||||||||        ");
+      safetySuggestion = "Brake";
+      break;
+    case 9:
+      lcd.print("|||||||||       ");
+      safetySuggestion = "Brake";
+      break;
+    case 10:
+      lcd.print("||||||||||      ");
+      safetySuggestion = "Brake";
+      break;
+    case 11:
+      lcd.print("|||||||||||     ");
+      safetySuggestion = "Brake";
+      break;
+    case 12:
+      lcd.print("||||||||||||    ");
+      safetySuggestion = "BRAKE";
+      break;
+    case 13:
+      lcd.print("|||||||||||||   ");
+      safetySuggestion = "BRAKE";
+      break;
+    case 14:
+      lcd.print("||||||||||||||  ");
+      safetySuggestion = "BRAKE";
+      break;
+    case 15:
+      lcd.print("||||||||||||||| ");
+      safetySuggestion = "STOP";
+      break;
+    case 16:
+      lcd.print("||||||||||||||||");
+      safetySuggestion = "STOP";
+      break;
+    default:
+      lcd.print("lmao code better");
+    break;
+  }
+
+  // Print distance on displayf
+  lcd.leftToRight();
+  lcd.setCursor(0, 0);
+  lcd.print(currentDistance / 1000);
+  lcd.print("M");
+  
+  // Print safety suggestion on display
+  lcd.leftToRight();
+  lcd.setCursor(6, 0);
+  lcd.print(safetySuggestion);
+  delay(100);
+  lcd.clear();          
+
 }
