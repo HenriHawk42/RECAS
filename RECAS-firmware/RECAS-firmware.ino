@@ -155,71 +155,71 @@ void loop() {
   lcd.setCursor(0, 1);
   switch (safetyIndicator) {
     case 0:
-      lcd.print("                ");
+      lcd.print("[              ]");
       safetySuggestion = "Good";
       break;
     case 1:
-      lcd.print("|               ");
+      lcd.print("[              ]");
       safetySuggestion = "Good";
       break;
     case 2:
-      lcd.print("||              ");
+      lcd.print("[|             ]");
       safetySuggestion = "Coast";
       break;
     case 3:
-      lcd.print("|||             ");
+      lcd.print("[||            ]");
       safetySuggestion = "Coast";
       break;
     case 4:
-      lcd.print("||||            ");
+      lcd.print("[|||           ]");
       safetySuggestion = "Coast";
       break;
     case 5:
-      lcd.print("|||||           ");
+      lcd.print("[||||          ]");
       safetySuggestion = "Slow";
       break;
     case 6:
-      lcd.print("||||||          ");
+      lcd.print("[|||||         ]");
       safetySuggestion = "Slow";
       break;
     case 7:
-      lcd.print("|||||||         ");
+      lcd.print("[||||||        ]");
       safetySuggestion = "Slow";
       break;
     case 8:
-      lcd.print("||||||||        ");
+      lcd.print("[|||||||       ]");
       safetySuggestion = "Brake";
       break;
     case 9:
-      lcd.print("|||||||||       ");
+      lcd.print("[||||||||      ]");
       safetySuggestion = "Brake";
       break;
     case 10:
-      lcd.print("||||||||||      ");
+      lcd.print("[|||||||||     ]");
       safetySuggestion = "Brake";
       break;
     case 11:
-      lcd.print("|||||||||||     ");
+      lcd.print("[||||||||||    ]");
       safetySuggestion = "Brake";
       break;
     case 12:
-      lcd.print("||||||||||||    ");
-      safetySuggestion = "BRAKE";
+      lcd.print("[|||||||||||   ]");
+      safetySuggestion = "BRAKE NOW";
       break;
     case 13:
-      lcd.print("|||||||||||||   ");
-      safetySuggestion = "BRAKE";
+      lcd.print("[||||||||||||  ]");
+      safetySuggestion = "BRAKE NOW";
       break;
     case 14:
-      lcd.print("||||||||||||||  ");
-      safetySuggestion = "BRAKE";
+      lcd.print("[||||||||||||| ]");
+      safetySuggestion = "BRAKE NOW";
       break;
     case 15:
-      lcd.print("||||||||||||||| ");
+      lcd.print("[||||||||||||||]");
       safetySuggestion = "STOP";
       break;
     case 16:
-      lcd.print("||||||||||||||||");
+      lcd.print("[||||||||||||||]");
       safetySuggestion = "STOP";
       break;
     default:
